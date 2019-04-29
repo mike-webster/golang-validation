@@ -8,7 +8,7 @@ import (
 
 func main() {
 	r := getRouter()
-	r.Run()
+	r.Run("0.0.0.0:3001")
 }
 
 func getRouter() *gin.Engine {

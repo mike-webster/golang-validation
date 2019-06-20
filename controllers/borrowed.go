@@ -141,6 +141,8 @@ func ValidationErrorToText(e *validator.FieldError) string {
 		return fmt.Sprintf("%s must not contain '%s'", word, e.Param)
 	case "eqfield":
 		return fmt.Sprintf("%s must match %s", word, e.Param)
+	case "uuid4":
+		return fmt.Sprintf("%s is not a valid uuidv4", word)
 	}
 	return fmt.Sprintf("%s is not valid", word)
 }

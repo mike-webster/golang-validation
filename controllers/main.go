@@ -15,6 +15,7 @@ func GetRouter() *gin.Engine {
 	r.POST("/car", carHandler)
 	r.POST("/album", albumHandler)
 	r.POST("/password", passwordHandler)
+	r.POST("/lead", leadHandler)
 	router = r
 	return router
 }

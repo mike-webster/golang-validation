@@ -94,6 +94,10 @@ func ValidationErrorToText(e *validator.FieldError) string {
 		return fmt.Sprintf("Invalid email format")
 	case "len":
 		return fmt.Sprintf("%s must be %s characters long", word, e.Param)
+	case "lte":
+		return fmt.Sprintf("%s must be less than or equal to %s characters", word, e.Param)
+	case "gte":
+		return fmt.Sprintf("%s must be at least %s characters", word, e.Param)
 	}
 	return fmt.Sprintf("%s is not valid", word)
 }

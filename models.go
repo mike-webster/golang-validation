@@ -9,7 +9,7 @@ type CarExample struct {
 
 type AlbumExample struct {
 	Artist []string `biding:"required,gte=1,lte=5,dive,gte=2,lte=50"`
-	Name string `binding:"required,gte=2,lte=50,alpha"`
+	Name   string   `binding:"required,gte=2,lte=50,alpha"`
 }
 
 type PasswordExample struct {

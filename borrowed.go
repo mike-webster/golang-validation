@@ -81,6 +81,9 @@ func Split(src string) string {
 	return justString
 }
 
+// Unit will take in the field being validated and return
+// the appropriate string to use when describing the desired
+// amount of whatever is being validated.
 func Unit(e *validator.FieldError) string {
 	switch e.Kind.String() {
 	case "slice":
@@ -100,10 +103,18 @@ func Unit(e *validator.FieldError) string {
 	}
 }
 
+// ValidationErrorToText will take a field error and return the
+// appropriate readable version of the error
 func ValidationErrorToText(e *validator.FieldError) string {
 	// NOTE: A case needs to be added to this for each tag
 	//       you implement - this is probably the best and
 	//       most obvious reason for consistency.
+	//
+	// EXPLANATIONS:
+	// - e.Field => this is the field being validated
+	// - word => this parses the field into readable form (ex: OldPassword -> Old password)
+	// - e.Param => this will be the value the field field is "supposed" to be, or the limit, etc
+
 	word := Split(e.Field)
 	switch e.Tag {
 	case "required":
@@ -120,6 +131,16 @@ func ValidationErrorToText(e *validator.FieldError) string {
 		return fmt.Sprintf("%s must contain no more than %s %s", word, e.Param, Unit(e))
 	case "gte":
 		return fmt.Sprintf("%s must contain at least %s %s", word, e.Param, Unit(e))
+	case "alphanum":
+		return fmt.Sprintf("%s must be alphanumeric", word)
+	case "nefield":
+		return fmt.Sprintf("%s must not be the same as %s", word, Split(e.Param))
+	case "excludes":
+		return fmt.Sprintf("%s must not be '%s'", word, e.Param)
+	case "excludesrune":
+		return fmt.Sprintf("%s must not contain '%s'", word, e.Param)
+	case "eqfield":
+		return fmt.Sprintf("%s must match %s", word, e.Param)
 	}
 	return fmt.Sprintf("%s is not valid", word)
 }

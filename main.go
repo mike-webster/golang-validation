@@ -21,6 +21,7 @@ func getRouter() *gin.Engine {
 	r.Use(mwParseValidation())
 	r.POST("/car", carHandler)
 	r.POST("/album", albumHandler)
+	r.POST("/password", passwordHandler)
 	return r
 }
 
@@ -81,6 +82,17 @@ func carHandler(c *gin.Context) {
 func albumHandler(c *gin.Context) {
 	var album AlbumExample
 	err := c.Bind(&album)
+	if err != nil {
+		c.Set("controllerError", true)
+		return
+	}
+
+	c.Status(200)
+}
+
+func passwordHandler(c *gin.Context) {
+	var password PasswordExample
+	err := c.Bind(&password)
 	if err != nil {
 		c.Set("controllerError", true)
 		return

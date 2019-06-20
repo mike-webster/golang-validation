@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/bmizerany/assert"
+	gin "github.com/gin-gonic/gin"
 )
 
 type testCase struct {
@@ -22,7 +23,6 @@ type testCase struct {
 }
 
 func TestMain(t *testing.T) {
-	testHeaders := map[string]string{"Content-Type": "application/json"}
 	r := getRouter()
 
 	t.Run("CarTests", func(t *testing.T) {
@@ -83,15 +83,7 @@ func TestMain(t *testing.T) {
 				ExpMessages: []string{"Model must contain no more than 15 characters"},
 			},
 		}
-
-		for _, ct := range tests {
-			t.Run(ct.Name, func(t *testing.T) {
-				bytes, _ := json.Marshal(ct.Body)
-				req := performRequest(r, "POST", ct.Path, &bytes, testHeaders)
-
-				assertCodeAndMessages(t, ct, req)
-			})
-		}
+		runTests(t, tests, r)
 	})
 
 	t.Run("AlbumTests", func(t *testing.T) {
@@ -140,7 +132,7 @@ func TestMain(t *testing.T) {
 				},
 			},
 			testCase{
-			Name: "artist-entry-too-long",
+				Name:        "artist-entry-too-long",
 				Path:        "/album",
 				ExpCode:     400,
 				ExpFields:   []string{"Artist[0]"},
@@ -151,7 +143,7 @@ func TestMain(t *testing.T) {
 				},
 			},
 			testCase{
-				Name: "name-not-provided",
+				Name:        "name-not-provided",
 				Path:        "/album",
 				ExpCode:     400,
 				ExpFields:   []string{"Name"},
@@ -161,94 +153,274 @@ func TestMain(t *testing.T) {
 				},
 			},
 			testCase{
-				Name: "name-too-short",
+				Name:        "name-too-short",
 				Path:        "/album",
 				ExpCode:     400,
 				ExpFields:   []string{"Name"},
 				ExpMessages: []string{"Name must contain at least 2 characters"},
 				Body: AlbumExample{
 					Artist: []string{"blink 182"},
-					Name: "a",
+					Name:   "a",
 				},
 			},
 			testCase{
-				Name: "name-too-long",
+				Name:        "name-too-long",
 				Path:        "/album",
 				ExpCode:     400,
 				ExpFields:   []string{"Name"},
 				ExpMessages: []string{"Name must contain no more than 50 characters"},
 				Body: AlbumExample{
 					Artist: []string{"blink 182"},
-					Name: "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasd",
+					Name:   "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasd",
 				},
 			},
 		}
-
-		for _, at := range tests {
-			t.Run(at.Name, func(t *testing.T) {
-				bytes, _ := json.Marshal(at.Body)
-				req := performRequest(r, "POST", at.Path, &bytes, testHeaders)
-
-				assertCodeAndMessages(t, at, req)
-			})
-		}
+		runTests(t, tests, r)
 	})
 
 	t.Run("PasswordTests", func(t *testing.T) {
-		// type PasswordExample struct {
-		// 	Username string `binding:"required,gte=5,lte=30,alphanum"`
-		// 		OldPassword string `binding:"required,gte=8,lte=30"`
-		// 	Password string `binding:"required,gte=8,lte=30,nefield=OldPassword,excludes=password,excludesrune=^"`
-		// 	PasswordConfirm string `binding:"required,gte=8,lte=30,eqfield=Password,nefield=OldPassword"`
-		// }
-	})
-
-	t.Run("LeadSourceTests", func(t *testing.T) {
-		// type LeadSourceExample struct {
-		// 	VisitorID string `binding:"required,uuid4"`
-		// 	Source string `binding:"required,eq=google|yahoo|other"`
-		// }
-	})
-
-	t.Run("SignupTests", func(t *testing.T) {
-		// type SignupExample struct {
-		// 	Username string `binding:"required,gte=5,lte=30,alphanum"`
-		// 	Email string `binding:"required,email,max=100"`
-		// }
-	})
-
-	t.Run("StudioSessionTests", func(t *testing.T) {
-		// type StudioSessionExample struct {
-		// 	BandName string `binding:"required,max=30,alphanum"`
-		// 	BandMembers int `binding:"required,numeric,max=8"`
-		// 	StartTime time.Time `binding:"required"`
-		// 	EndTime time.Time `binding:"required,gtfield=StartTime"`
-		// }
-	})
-
-	t.Run("PartnershipRequestTests", func(t *testing.T) {
-		// type PartnershipRequestExample struct {
-		// 	CompanyName string `binding:"required,max=50,alphanum"`
-		// 	Website string `binding:"required,url"`
-		// 	Referrer string `binding:"uri"`
-		// }
-	})
-
-	t.Run("PostCoordinatesTests", func(t *testing.T) {
-		// type PostCoordinatesExample struct {
-		// 	UserID int `binding:"required,int"`
-		// 	Lat string `binding:"required,latitude"`
-		// 	Long string `binding:"required,longitude"`
-		// }
+		tests := []testCase{
+			testCase{
+				Name:        "username-not-provided",
+				Path:        "/password",
+				ExpCode:     400,
+				ExpFields:   []string{"Username"},
+				ExpMessages: []string{"Username is required"},
+				Body: PasswordExample{
+					Password:        "testpass",
+					PasswordConfirm: "testpass",
+					OldPassword:     "oldtestpass",
+				},
+			},
+			testCase{
+				Name:        "username-too-short",
+				Path:        "/password",
+				ExpCode:     400,
+				ExpFields:   []string{"Username"},
+				ExpMessages: []string{"Username must contain at least 5 characters"},
+				Body: PasswordExample{
+					Username:        "a",
+					Password:        "testpass",
+					PasswordConfirm: "testpass",
+					OldPassword:     "oldtestpass",
+				},
+			},
+			testCase{
+				Name:        "username-too-long",
+				Path:        "/password",
+				ExpCode:     400,
+				ExpFields:   []string{"Username"},
+				ExpMessages: []string{"Username must contain no more than 30 characters"},
+				Body: PasswordExample{
+					Username:        "fdsafdsafdsafdsafdsafdsafdasfds",
+					Password:        "testpass",
+					PasswordConfirm: "testpass",
+					OldPassword:     "oldtestpass",
+				},
+			},
+			testCase{
+				Name:        "username-not-alphanum",
+				Path:        "/password",
+				ExpCode:     400,
+				ExpFields:   []string{"Username"},
+				ExpMessages: []string{"Username must be alphanumeric"},
+				Body: PasswordExample{
+					Username:        "fdsafd fds",
+					Password:        "testpass",
+					PasswordConfirm: "testpass",
+					OldPassword:     "oldtestpass",
+				},
+			},
+			testCase{
+				Name:        "old-password-not-provided",
+				Path:        "/password",
+				ExpCode:     400,
+				ExpFields:   []string{"OldPassword"},
+				ExpMessages: []string{"Old password is required"},
+				Body: PasswordExample{
+					Username:        "fdsafdfdsfds",
+					Password:        "testpass",
+					PasswordConfirm: "testpass",
+				},
+			},
+			testCase{
+				Name:        "old-password-too-short",
+				Path:        "/password",
+				ExpCode:     400,
+				ExpFields:   []string{"OldPassword"},
+				ExpMessages: []string{"Old password must contain at least 8 characters"},
+				Body: PasswordExample{
+					Username:        "fdsafdfdsfds",
+					Password:        "testpass",
+					PasswordConfirm: "testpass",
+					OldPassword:     "a",
+				},
+			},
+			testCase{
+				Name:        "old-password-too-long",
+				Path:        "/password",
+				ExpCode:     400,
+				ExpFields:   []string{"OldPassword"},
+				ExpMessages: []string{"Old password must contain no more than 30 characters"},
+				Body: PasswordExample{
+					Username:        "fdsafdfdsfds",
+					Password:        "testpass",
+					PasswordConfirm: "testpass",
+					OldPassword:     "fdsafdsafdasfdasfdasfdasfdsafds",
+				},
+			},
+			testCase{
+				Name:        "password-not-provided",
+				Path:        "/password",
+				ExpCode:     400,
+				ExpFields:   []string{"Password"},
+				ExpMessages: []string{"Password is required"},
+				Body: PasswordExample{
+					Username:        "fdsafdfdsfds",
+					PasswordConfirm: "testpass",
+					OldPassword:     "oldtestpass",
+				},
+			},
+			testCase{
+				Name:        "password-too-short",
+				Path:        "/password",
+				ExpCode:     400,
+				ExpFields:   []string{"Password"},
+				ExpMessages: []string{"Password must contain at least 8 characters"},
+				Body: PasswordExample{
+					Username:        "fdsafdfdsfds",
+					Password:        "test",
+					PasswordConfirm: "testpass",
+					OldPassword:     "oldtestpass",
+				},
+			},
+			testCase{
+				Name:        "password-too-long",
+				Path:        "/password",
+				ExpCode:     400,
+				ExpFields:   []string{"Password"},
+				ExpMessages: []string{"Password must contain no more than 30 characters"},
+				Body: PasswordExample{
+					Username:        "fdsafdfdsfds",
+					Password:        "fdsafdsafdasfdasfdasfdasfdsafds",
+					PasswordConfirm: "testpass",
+					OldPassword:     "oldtestpass",
+				},
+			},
+			testCase{
+				Name:        "password-not-equal-old-password",
+				Path:        "/password",
+				ExpCode:     400,
+				ExpFields:   []string{"Password"},
+				ExpMessages: []string{"Password must not be the same as Old password"},
+				Body: PasswordExample{
+					Username:        "fdsafdfdsfds",
+					Password:        "oldtestpass",
+					PasswordConfirm: "oldtestpass",
+					OldPassword:     "oldtestpass",
+				},
+			},
+			testCase{
+				Name:        "password-not-equal-'password'",
+				Path:        "/password",
+				ExpCode:     400,
+				ExpFields:   []string{"Password"},
+				ExpMessages: []string{"Password must not be 'password'"},
+				Body: PasswordExample{
+					Username:        "fdsafdfdsfds",
+					Password:        "password",
+					PasswordConfirm: "password",
+					OldPassword:     "oldtestpass",
+				},
+			},
+			testCase{
+				Name:        "password-doesnt-contain-'^'",
+				Path:        "/password",
+				ExpCode:     400,
+				ExpFields:   []string{"Password"},
+				ExpMessages: []string{"Password must not contain '^'"},
+				Body: PasswordExample{
+					Username:        "fdsafdfdsfds",
+					Password:        "passw^rd",
+					PasswordConfirm: "password",
+					OldPassword:     "oldtestpass",
+				},
+			},
+			testCase{
+				Name:        "password-confirm-not-provided",
+				Path:        "/password",
+				ExpCode:     400,
+				ExpFields:   []string{"PasswordConfirm"},
+				ExpMessages: []string{"Password confirm is required"},
+				Body: PasswordExample{
+					Username:    "fdsafdfdsfds",
+					Password:    "testpass",
+					OldPassword: "oldtestpass",
+				},
+			},
+			testCase{
+				Name:        "password-confirm-too-short",
+				Path:        "/password",
+				ExpCode:     400,
+				ExpFields:   []string{"PasswordConfirm"},
+				ExpMessages: []string{"Password confirm must contain at least 8 characters"},
+				Body: PasswordExample{
+					Username:        "fdsafdfdsfds",
+					Password:        "testpass",
+					PasswordConfirm: "t",
+					OldPassword:     "oldtestpass",
+				},
+			},
+			testCase{
+				Name:        "password-confirm-too-long",
+				Path:        "/password",
+				ExpCode:     400,
+				ExpFields:   []string{"PasswordConfirm"},
+				ExpMessages: []string{"Password confirm must contain no more than 30 characters"},
+				Body: PasswordExample{
+					Username:        "fdsafdfdsfds",
+					Password:        "testpass",
+					PasswordConfirm: "fdasfdsafdsafdsafdasfdsafdsafds",
+					OldPassword:     "oldtestpass",
+				},
+			},
+			testCase{
+				Name:        "password-confirm-equal-password",
+				Path:        "/password",
+				ExpCode:     400,
+				ExpFields:   []string{"PasswordConfirm"},
+				ExpMessages: []string{"Password confirm must match Password"},
+				Body: PasswordExample{
+					Username:        "fdsafdfdsfds",
+					Password:        "testpass",
+					PasswordConfirm: "oldtestpass",
+					OldPassword:     "oldtestpass",
+				},
+			},
+			testCase{
+				Name:        "password-confirm-not-equal-old-password",
+				Path:        "/password",
+				ExpCode:     400,
+				ExpFields:   []string{"PasswordConfirm"},
+				ExpMessages: []string{"Password confirm must not be the same as Old password"},
+				Body: PasswordExample{
+					Username:        "fdsafdfdsfds",
+					Password:        "oldtestpass",
+					PasswordConfirm: "oldtestpass",
+					OldPassword:     "oldtestpass",
+				},
+			},
+		}
+		runTests(t, tests, r)
 	})
 
 	t.Run("UploadCSVsTests", func(t *testing.T) {
-		// type UploadCsvsExample struct {
-		// 	Content [][]string `binding:"required,max=5,dive,gte=3,max=50,dive,required,gte=5,max=1000,alpha"`
-		// }
+		tests := []testCase{}
+		runTests(t, tests, r)
 	})
 }
 
+// performRequest performs the request ;)
 func performRequest(r http.Handler,
 	method string,
 	path string,
@@ -272,6 +444,27 @@ func performRequest(r http.Handler,
 	return w
 }
 
+// runTests will take a slice of test cases and a gin router and perform
+// all of the assertions for the tests.
+func runTests(t *testing.T, cases []testCase, r *gin.Engine) {
+	testHeaders := map[string]string{"Content-Type": "application/json"}
+	for _, iCase := range cases {
+		t.Run(iCase.Name, func(t *testing.T) {
+			bytes, _ := json.Marshal(iCase.Body)
+			req := performRequest(r, "POST", iCase.Path, &bytes, testHeaders)
+
+			assertCodeAndMessages(t, iCase, req)
+		})
+	}
+}
+
+// assertCodeAndMessages will check the code and messages in the given test case
+// to ensure the response values were what we were expecting.
+//
+// there's one flaw to the way I built this - we're only checking to make sure
+// that the expected fields and messages are contained in the response. This means
+// that there could be additional messages that we weren't intending... but it's
+// just a testing shortcut :)
 func assertCodeAndMessages(t *testing.T, tc testCase, req *httptest.ResponseRecorder) {
 	t.Run("ExpectedCode", func(t *testing.T) {
 		assert.Equal(t, tc.ExpCode, req.Code, req.Body)

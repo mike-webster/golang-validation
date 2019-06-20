@@ -14,6 +14,7 @@ func main() {
 // getRouter creates the gin router and sets up the routes
 func getRouter() *gin.Engine {
 	r := gin.Default()
+	r.Use(mwParseValidation())
 	r.POST("/car", carHandler)
 	return r
 }

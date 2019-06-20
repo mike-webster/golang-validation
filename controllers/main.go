@@ -7,6 +7,8 @@ var router *gin.Engine
 // GetRouter will return a configured router
 func GetRouter() *gin.Engine {
 	if router != nil {
+		// I'm only cacheing this to avoid recreating the router
+		// a bunch of times for tests
 		return router
 	}
 	r := gin.Default()

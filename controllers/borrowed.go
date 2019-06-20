@@ -1,4 +1,4 @@
-package wyzvalidator
+package controllers
 
 import (
 	"errors"

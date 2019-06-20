@@ -57,5 +57,6 @@ func carHandler(c *gin.Context) {
 		return
 	}
 
-	log.Println("car: ", ret)
+	c.Status(200)
+}
 }

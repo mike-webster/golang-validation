@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io/ioutil"
 	"log"
 	"net/http"
 
@@ -16,6 +17,7 @@ func main() {
 // getRouter creates the gin router and sets up the routes
 func getRouter() *gin.Engine {
 	r := gin.Default()
+	r.Use(mwLogBody())
 	r.Use(mwParseValidation())
 	r.POST("/car", carHandler)
 	r.POST("/album", albumHandler)
@@ -48,6 +50,18 @@ func mwParseValidation() gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusBadRequest, ret)
 			return
 		}
+	}
+}
+
+// mwLogBody just prints out the posted body for each request
+// this helps troubleshoot failing tests - we wouldn't need this
+// in a production env.
+func mwLogBody() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		bs, _ := c.Request.GetBody()
+		bytes, _ := ioutil.ReadAll(bs)
+		log.Println("BODY: ", string(bytes))
+		c.Next()
 	}
 }
 

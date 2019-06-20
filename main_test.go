@@ -12,29 +12,29 @@ import (
 	"github.com/bmizerany/assert"
 )
 
+type testCase struct {
+	Name        string
+	Path        string
+	ExpCode     int
+	ExpFields   []string
+	ExpMessages []string
+	Body        interface{} // I made this an interface so that it could be used by all test cases
+}
+
 func TestMain(t *testing.T) {
 	testHeaders := map[string]string{"Content-Type": "application/json"}
 	r := getRouter()
 
 	t.Run("CarTests", func(t *testing.T) {
-		type cases struct {
-			Name        string
-			Path        string
-			ExpCode     int
-			ExpFields   []string
-			ExpMessages []string
-			Body        CarExample
-		}
-
-		tests := []cases{
-			cases{
+		tests := []testCase{
+			testCase{
 				Name:        "no-make-or-model-provided",
 				Path:        "/car",
 				ExpCode:     400,
 				ExpFields:   []string{"Make", "Model"},
 				ExpMessages: []string{"Make is required", "Model is required"},
 			},
-			cases{
+			testCase{
 				Name:        "no-make-provided",
 				Path:        "/car",
 				ExpCode:     400,
@@ -42,7 +42,7 @@ func TestMain(t *testing.T) {
 				ExpFields:   []string{"Make"},
 				ExpMessages: []string{"Make is required"},
 			},
-			cases{
+			testCase{
 				Name:        "no-model-provided",
 				Path:        "/car",
 				ExpCode:     400,
@@ -50,86 +50,147 @@ func TestMain(t *testing.T) {
 				ExpFields:   []string{"Model"},
 				ExpMessages: []string{"Model is required"},
 			},
-			cases{
+			testCase{
 				Name:        "make-too-short",
 				Path:        "/car",
 				ExpCode:     400,
 				Body:        CarExample{Make: "aa", Model: "test model"},
 				ExpFields:   []string{"Make"},
-				ExpMessages: []string{"Make must be at least 3 characters"},
+				ExpMessages: []string{"Make must contain at least 3 characters"},
 			},
-			cases{
+			testCase{
 				Name:        "make-too-long",
 				Path:        "/car",
 				ExpCode:     400,
 				Body:        CarExample{Make: "aaaaaaaaaaaaaaaaaaaaa", Model: "test model"},
 				ExpFields:   []string{"Make"},
-				ExpMessages: []string{"Make must be less than or equal to 20 characters"},
+				ExpMessages: []string{"Make must contain no more than 20 characters"},
 			},
-			cases{
+			testCase{
 				Name:        "model-too-short",
 				Path:        "/car",
 				ExpCode:     400,
 				Body:        CarExample{Make: "test make", Model: "q"},
 				ExpFields:   []string{"Model"},
-				ExpMessages: []string{"Model must be at least 2 characters"},
+				ExpMessages: []string{"Model must contain at least 2 characters"},
 			},
-			cases{
+			testCase{
 				Name:        "model-too-long",
 				Path:        "/car",
 				ExpCode:     400,
 				Body:        CarExample{Make: "test make", Model: "aaaaaaaaaaaaaaaa"},
 				ExpFields:   []string{"Model"},
-				ExpMessages: []string{"Model must be less than or equal to 15 characters"},
+				ExpMessages: []string{"Model must contain no more than 15 characters"},
 			},
 		}
 
 		for _, ct := range tests {
 			t.Run(ct.Name, func(t *testing.T) {
 				bytes, _ := json.Marshal(ct.Body)
-				req := performRequest(r, "POST", "/car", &bytes, testHeaders)
-				t.Run("ExpectedCode", func(t *testing.T) {
-					assert.Equal(t, ct.ExpCode, req.Code, req.Body)
-				})
+				req := performRequest(r, "POST", ct.Path, &bytes, testHeaders)
 
-				errs := map[string]string{}
-				_ = json.Unmarshal([]byte(req.Body.String()), &errs)
-				t.Run("ExpectedFields", func(t *testing.T) {
-					for _, f := range ct.ExpFields {
-						found := false
-						for k := range errs {
-							if k == f {
-								found = true
-							}
-						}
-						assert.Equal(t, true, found, fmt.Sprint("Field: ", f))
-					}
-				})
-				t.Run("ExpectedMessages", func(t *testing.T) {
-					for _, m := range ct.ExpMessages {
-						found := false
-						for _, v := range errs {
-							if v == m {
-								found = true
-							}
-						}
-						assert.Equal(t, true, found, fmt.Sprint("Messages: ", errs), fmt.Sprint("\nExpected: ", m), fmt.Sprint("\nBody: ", string(bytes)))
-					}
-				})
+				assertCodeAndMessages(t, ct, req)
 			})
 		}
 	})
 
 	t.Run("AlbumTests", func(t *testing.T) {
-		// type AlbumExample struct {
-		// 	Artist []string `biding:"required,gte=1,lte=5,dive,gte=2,lte=50"`
-		// 	Name string `binding:"required,gte=2,lte=50,alpha"`
-		// }
-		type cases struct {
-			Name    string
-			Path    string
-			ExpCode int
-			Body    AlbumExample
+		tests := []testCase{
+			testCase{
+				Name:        "artists-not-provided",
+				Path:        "/album",
+				ExpCode:     400,
+				ExpFields:   []string{"Artist"},
+				ExpMessages: []string{"Artist is required"},
+				Body: AlbumExample{
+					Name: "dude ranch",
+				},
+			},
+			testCase{
+				Name:        "artists-empty",
+				Path:        "/album",
+				ExpCode:     400,
+				ExpFields:   []string{"Artist"},
+				ExpMessages: []string{"Artist must contain at least 1 entry"},
+				Body: AlbumExample{
+					Artist: []string{},
+					Name:   "dude ranch",
+				},
+			},
+			testCase{
+				Name:        "artists-too-large",
+				Path:        "/album",
+				ExpCode:     400,
+				ExpFields:   []string{"Artist"},
+				ExpMessages: []string{"Artist must contain no more than 5 entries"},
+				Body: AlbumExample{
+					Artist: []string{"fda", "fda", "fdas", "fdas", "fdas", "fda"},
+					Name:   "dude ranch",
+				},
+			},
+			testCase{
+				Name:        "artist-entry-too-short",
+				Path:        "/album",
+				ExpCode:     400,
+				ExpFields:   []string{"Artist[0]"},
+				ExpMessages: []string{"Artist [ 0 ] must contain at least 2 characters"},
+				Body: AlbumExample{
+					Artist: []string{"f"},
+					Name:   "dude ranch",
+				},
+			},
+			testCase{
+			Name: "artist-entry-too-long",
+				Path:        "/album",
+				ExpCode:     400,
+				ExpFields:   []string{"Artist[0]"},
+				ExpMessages: []string{"Artist [ 0 ] must contain no more than 50 characters"},
+				Body: AlbumExample{
+					Artist: []string{"asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasd"},
+					Name:   "dude ranch",
+				},
+			},
+			testCase{
+				Name: "name-not-provided",
+				Path:        "/album",
+				ExpCode:     400,
+				ExpFields:   []string{"Name"},
+				ExpMessages: []string{"Name is required"},
+				Body: AlbumExample{
+					Artist: []string{"blink 182"},
+				},
+			},
+			testCase{
+				Name: "name-too-short",
+				Path:        "/album",
+				ExpCode:     400,
+				ExpFields:   []string{"Name"},
+				ExpMessages: []string{"Name must contain at least 2 characters"},
+				Body: AlbumExample{
+					Artist: []string{"blink 182"},
+					Name: "a",
+				},
+			},
+			testCase{
+				Name: "name-too-long",
+				Path:        "/album",
+				ExpCode:     400,
+				ExpFields:   []string{"Name"},
+				ExpMessages: []string{"Name must contain no more than 50 characters"},
+				Body: AlbumExample{
+					Artist: []string{"blink 182"},
+					Name: "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasd",
+				},
+			},
+		}
+
+		for _, at := range tests {
+			t.Run(at.Name, func(t *testing.T) {
+				bytes, _ := json.Marshal(at.Body)
+				req := performRequest(r, "POST", at.Path, &bytes, testHeaders)
+
+				assertCodeAndMessages(t, at, req)
+			})
 		}
 	})
 
@@ -209,4 +270,35 @@ func performRequest(r http.Handler,
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	return w
+}
+
+func assertCodeAndMessages(t *testing.T, tc testCase, req *httptest.ResponseRecorder) {
+	t.Run("ExpectedCode", func(t *testing.T) {
+		assert.Equal(t, tc.ExpCode, req.Code, req.Body)
+	})
+
+	errs := map[string]string{}
+	_ = json.Unmarshal([]byte(req.Body.String()), &errs)
+	t.Run("ExpectedFields", func(t *testing.T) {
+		for _, f := range tc.ExpFields {
+			found := false
+			for k := range errs {
+				if k == f {
+					found = true
+				}
+			}
+			assert.Equal(t, true, found, fmt.Sprint("Field: ", f), fmt.Sprint(" -- Body: ", string(req.Body.String())))
+		}
+	})
+	t.Run("ExpectedMessages", func(t *testing.T) {
+		for _, m := range tc.ExpMessages {
+			found := false
+			for _, v := range errs {
+				if v == m {
+					found = true
+				}
+			}
+			assert.Equal(t, true, found, fmt.Sprint("Messages: ", errs), fmt.Sprint("\nExpected: ", m), fmt.Sprint(" -- Body: ", string(req.Body.String())))
+		}
+	})
 }

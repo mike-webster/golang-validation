@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -80,9 +81,30 @@ func Split(src string) string {
 	return justString
 }
 
-func ValidationErrorToText(e *validator.FieldError) string {
-	word := Split(e.Field)
+func Unit(e *validator.FieldError) string {
+	switch e.Kind.String() {
+	case "slice":
+		i, _ := strconv.Atoi(e.Param)
+		if i < 2 {
+			return "entry"
+		}
+		return "entries"
+	case "string":
+		i, _ := strconv.Atoi(e.Param)
+		if i < 2 {
+			return "character"
+		}
+		return "characters"
+	default:
+		return "unknown"
+	}
+}
 
+func ValidationErrorToText(e *validator.FieldError) string {
+	// NOTE: A case needs to be added to this for each tag
+	//       you implement - this is probably the best and
+	//       most obvious reason for consistency.
+	word := Split(e.Field)
 	switch e.Tag {
 	case "required":
 		return fmt.Sprintf("%s is required", word)
@@ -95,9 +117,9 @@ func ValidationErrorToText(e *validator.FieldError) string {
 	case "len":
 		return fmt.Sprintf("%s must be %s characters long", word, e.Param)
 	case "lte":
-		return fmt.Sprintf("%s must be less than or equal to %s characters", word, e.Param)
+		return fmt.Sprintf("%s must contain no more than %s %s", word, e.Param, Unit(e))
 	case "gte":
-		return fmt.Sprintf("%s must be at least %s characters", word, e.Param)
+		return fmt.Sprintf("%s must contain at least %s %s", word, e.Param, Unit(e))
 	}
 	return fmt.Sprintf("%s is not valid", word)
 }

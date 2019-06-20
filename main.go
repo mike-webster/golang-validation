@@ -2,8 +2,10 @@ package main
 
 import (
 	"log"
+	"net/http"
 
 	gin "github.com/gin-gonic/gin"
+	"gopkg.in/go-playground/validator.v8"
 )
 
 func main() {
@@ -16,6 +18,7 @@ func getRouter() *gin.Engine {
 	r := gin.Default()
 	r.Use(mwParseValidation())
 	r.POST("/car", carHandler)
+	r.POST("/album", albumHandler)
 	return r
 }
 
@@ -59,4 +62,15 @@ func carHandler(c *gin.Context) {
 
 	c.Status(200)
 }
+
+// albumHandler will handle POST requests to /album
+func albumHandler(c *gin.Context) {
+	var album AlbumExample
+	err := c.Bind(&album)
+	if err != nil {
+		c.Set("controllerError", true)
+		return
+	}
+
+	c.Status(200)
 }

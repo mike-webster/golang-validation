@@ -52,7 +52,7 @@ func carHandler(c *gin.Context) {
 	var ret CarExample
 	err := c.Bind(&ret)
 	if err != nil {
-		c.JSON(400, gin.H{"err": err})
+		c.Set("controllerError", true)
 		return
 	}
 

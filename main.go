@@ -20,10 +20,30 @@ func getRouter() *gin.Engine {
 
 // mwParseValidation will parse the gross default error messages into
 // readable, nice messages we can display.
-func mwParseValidation(c gin.Context) gin.HandlerFunc {
+func mwParseValidation() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// TODO, use borrowed validation to set nicer errors
 		c.Next()
+
+		_, exists := c.Get("controllerError")
+		if exists {
+			ret := map[string]string{}
+			for _, e := range c.Errors {
+				log.Println("error: ", e)
+				switch e.Type {
+				case gin.ErrorTypeBind:
+					helpful := e.Err.(validator.ValidationErrors)
+					for _, err := range helpful {
+						ret[err.Field] = ValidationErrorToText(err)
+					}
+				case gin.ErrorTypePrivate:
+					ret["msg"] = e.Error()
+				default:
+					log.Println("what is this error? ", e.Error())
+				}
+			}
+			c.AbortWithStatusJSON(http.StatusBadRequest, ret)
+			return
+		}
 	}
 }
 
